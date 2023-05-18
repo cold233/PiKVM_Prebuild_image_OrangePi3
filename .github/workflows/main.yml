@@ -1,11 +1,8 @@
 name: Build Armbian
 
 on:
-  release:
-    types: published
-  push:
-    branches:
-      - master
+  repository_dispatch:
+  workflow_dispatch:
 #  schedule:
 #    - cron: 0 8 * * 5
 #  watch:
