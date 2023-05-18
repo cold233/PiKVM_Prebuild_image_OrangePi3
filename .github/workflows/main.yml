@@ -20,10 +20,11 @@ env:
   BRANCH: next
   RELEASE: jessie
   BUILD_DESKTOP: no
+  CUSTOMIZATIOM_SCRIPT: customize-image.sh
 
 jobs:
   build:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-22.04
     if: github.event.repository.owner.id == github.event.sender.id
 
     steps:
@@ -41,15 +42,21 @@ jobs:
 
     - name: Download source code
       run: |
-        curl -L -o armbian.tar.gz $(curl https://api.github.com/repos/armbian/build/releases | awk -F"[tarball_url]" '/tarball_url/{print $x}' | grep $RELEASE_SOURCE_TAG | sed 's/"//g' | sed 's/tarball_url://g' | sed 's/ //g' | sed 's/,//g')
-        tar -xzf armbian.tar.gz
-        rm -rf armbian.tar.gz
+        apt-get -y install git
+        pwd
+        git clone --depth=1 --branch=main https://github.com/armbian/build && ls
+        # curl -L -o armbian.tar.gz $(curl https://api.github.com/repos/armbian/build/releases | awk -F"[tarball_url]" '/tarball_url/{print $x}' | grep $RELEASE_SOURCE_TAG | sed 's/"//g' | sed 's/tarball_url://g' | sed 's/ //g' | sed 's/,//g')
+        # tar -xzf armbian.tar.gz
+        # rm -rf armbian.tar.gz
 
     - name: Build Armbian
       id: build
       run: |
-        cd armbian-build*
-        sudo -E ./compile.sh BUILD_MINIMAL=$BUILD_MINIMAL KERNEL_ONLY=$KERNEL_ONLY KERNEL_CONFIGURE=$KERNEL_CONFIGURE BOARD=$BOARD BRANCH=$BRANCH RELEASE=$RELEASE BUILD_DESKTOP=$BUILD_DESKTOP FORCE_USE_RAMDISK=yes USE_CCACHE=yes
+        cd build
+        sudo -E ./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy
+        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
+        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
+        # sudo -E ./compile.sh BUILD_MINIMAL=$BUILD_MINIMAL KERNEL_ONLY=$KERNEL_ONLY KERNEL_CONFIGURE=$KERNEL_CONFIGURE BOARD=$BOARD BRANCH=$BRANCH RELEASE=$RELEASE BUILD_DESKTOP=$BUILD_DESKTOP FORCE_USE_RAMDISK=yes USE_CCACHE=yes
         echo "::set-output name=status::success"
         tar -cjvf /tmp/Armbian.tar.bz2 output/images/*.img
 
