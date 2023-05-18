@@ -17,7 +17,6 @@ env:
   BRANCH: next
   RELEASE: jessie
   BUILD_DESKTOP: no
-  TZ: Asia/Shanghai
   CUSTOMIZATIOM_SCRIPT: customize-image.sh
 
 jobs:
@@ -37,8 +36,6 @@ jobs:
         sudo -E apt-get -qq update
         sudo -E apt-get -qq autoremove --purge
         sudo -E apt-get -qq clean
-        sudo apt install -y git
-        sudo timedatectl set-timezone "$TZ"
         git config --global user.name $GIT_USER
         git config --global user.email $GIT_EMAIL
 
