@@ -46,8 +46,7 @@ jobs:
         # tar -xzf armbian.tar.gz
         # rm -rf armbian.tar.gz
 
-    - name: Build Armbian
-      id: build
+    - name: Download Armbian Kernel
       run: |
         cd build
         echo "./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy"
