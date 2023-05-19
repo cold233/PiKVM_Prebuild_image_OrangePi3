@@ -9,14 +9,7 @@ on:
 #    types: started
 
 env:
-  RELEASE_SOURCE_TAG: v2017.11
-  BUILD_MINIMAL: yes
-  KERNEL_ONLY: no
-  KERNEL_CONFIGURE: no
-  BOARD: orangepilite
-  BRANCH: next
-  RELEASE: jessie
-  BUILD_DESKTOP: no
+  UPLOAD_IMAGE: true
   CUSTOMIZATIOM_SCRIPT: userpatches/customize-image.sh
   KERNEL_CONFIG: config
 
@@ -66,11 +59,30 @@ jobs:
         echo "./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy"
         ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
         echo "::set-output name=status::success"
-        tar -cjvf /tmp/Armbian.tar.bz2 output/images/*.img
+        cd  output/images
+        tar -Jcvf /tmp/nanopi_neo_image.tar.xz  *.img
 
     - name: Upload Armbian image
       uses: actions/upload-artifact@master
       if: steps.build.outputs.status == 'success'
       with:
-        name: Armbian_firmware
-        path: /tmp/Armbian.tar.bz2
+        name: Nanopi_neo_image
+        path: /tmp/nanopi_neo_image.tar.xz
+
+    - name: Generate release tag
+      id: tag
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        echo "::set-output name=release_tag::$(date +"%Y.%m.%d-%H%M")"
+        touch release.txt
+        echo "::set-output name=status::success"
+
+    - name: Upload firmware to release
+      uses: softprops/action-gh-release@v1
+      if: steps.build.outputs.status == 'success' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        body_path: release.txt
+        files: /tmp/nanopi_neo_image.tar.xz
