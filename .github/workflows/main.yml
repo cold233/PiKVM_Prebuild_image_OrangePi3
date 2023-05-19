@@ -46,13 +46,13 @@ jobs:
         # tar -xzf armbian.tar.gz
         # rm -rf armbian.tar.gz
 
-    - name: Download Armbian Kernel
-      run: |
-        cd build
-        echo "./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy"
-        ./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy
-        echo "cp userpatches/customize-image.sh"
-        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
+#    - name: Download Armbian Kernel
+#      run: |
+#        cd build
+#        echo "./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy"
+#        ./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy
+#        echo "cp userpatches/customize-image.sh"
+#        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
         
     - name: Build Armbian
       id: build
