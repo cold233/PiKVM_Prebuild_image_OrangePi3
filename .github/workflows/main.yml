@@ -17,7 +17,7 @@ env:
   BRANCH: next
   RELEASE: jessie
   BUILD_DESKTOP: no
-  CUSTOMIZATIOM_SCRIPT: customize-image.sh
+  CUSTOMIZATIOM_SCRIPT: userpatches/customize-image.sh
   KERNEL_CONFIG: config
 
 jobs:
