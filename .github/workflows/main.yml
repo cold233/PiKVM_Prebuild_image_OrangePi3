@@ -18,6 +18,7 @@ env:
   RELEASE: jessie
   BUILD_DESKTOP: no
   CUSTOMIZATIOM_SCRIPT: customize-image.sh
+  KERNEL_CONFIG: config
 
 jobs:
   build:
@@ -46,22 +47,24 @@ jobs:
         # tar -xzf armbian.tar.gz
         # rm -rf armbian.tar.gz
 
-#    - name: Download Armbian Kernel
-#      run: |
-#        cd build
-#        echo "./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy"
-#        ./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy
-#        echo "cp userpatches/customize-image.sh"
-#        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
+    - name: Download Armbian Kernel
+      run: |
+        cd build
+        echo "cp kernel config"
+        mkdir /$GITHUB_WORKSPACE/build/cache/sources/linux-kernel-worktree/6.1__sunxi__armhf
+        [ -e $CUSTOMIZATIOM_SCRIPT ] && cp $GITHUB_WORKSPACE/$KERNEL_CONFIG /$GITHUB_WORKSPACE/build/cache/sources/linux-kernel-worktree/6.1__sunxi__armhf/.config
+        echo "./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy"
+        ./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy
         
     - name: Build Armbian
       id: build
       run: |
         cd build
+        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
         echo "cp userpatches/customize-image.sh"
         [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
         echo "./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy"
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
+        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy USE_CCACHE=yes
         # sudo -E ./compile.sh BUILD_MINIMAL=$BUILD_MINIMAL KERNEL_ONLY=$KERNEL_ONLY KERNEL_CONFIGURE=$KERNEL_CONFIGURE BOARD=$BOARD BRANCH=$BRANCH RELEASE=$RELEASE BUILD_DESKTOP=$BUILD_DESKTOP FORCE_USE_RAMDISK=yes USE_CCACHE=yes
         echo "::set-output name=status::success"
         tar -cjvf /tmp/Armbian.tar.bz2 output/images/*.img
