@@ -12,238 +12,667 @@
 # userpatches/overlay directory on host is bind-mounted to /tmp/overlay in chroot
 # The sd card's root path is accessible via $SDCARD variable.
 
-RELEASE=$1
-LINUXFAMILY=$2
-BOARD=$3
-BUILD_DESKTOP=$4
+# modified by xe5700            2021-11-04      xe5700@outlook.com
+# modified by NewbieOrange      2021-11-04
+# created by @srepac   08/09/2021   srepac@kvmnerds.com
+# Scripted Installer of Pi-KVM on Armbian 32-bit and 64-bit (as long as it's running python 3.10)
+#
+# *** MSD is disabled by default ***
+#
+# Mass Storage Device requires the use of a USB thumbdrive or SSD and will need to be added in /etc/fstab
+: '
+# SAMPLE /etc/fstab entry for USB drive with only one partition formatted as ext4 for the entire drive:
 
-Main() {
-	case $RELEASE in
-		stretch)
-			# your code here
-			# InstallOpenMediaVault # uncomment to get an OMV 4 image
-			;;
-		buster)
-			# your code here
-			;;
-		bullseye)
-			# your code here
-			;;
-		bionic)
-			# your code here
-			;;
-		focal)
-			# your code here
-			;;
-	esac
-} # Main
+/dev/sda1  /var/lib/kvmd/msd   ext4  nodev,nosuid,noexec,ro,errors=remount-ro,data=journal,X-kvmd.otgmsd-root=/var/lib/kvmd/msd,X-kvmd.otgmsd-user=kvmd  0  0
 
-InstallOpenMediaVault() {
-	# use this routine to create a Debian based fully functional OpenMediaVault
-	# image (OMV 3 on Jessie, OMV 4 with Stretch). Use of mainline kernel highly
-	# recommended!
-	#
-	# Please note that this variant changes Armbian default security 
-	# policies since you end up with root password 'openmediavault' which
-	# you have to change yourself later. SSH login as root has to be enabled
-	# through OMV web UI first
-	#
-	# This routine is based on idea/code courtesy Benny Stark. For fixes,
-	# discussion and feature requests please refer to
-	# https://forum.armbian.com/index.php?/topic/2644-openmediavault-3x-customize-imagesh/
+'
+# NOTE:  This was tested on a new install of raspbian desktop and lite versions, but should also work on an existing install.
+#
+# Last change 20230201 1025 PDT
+# VER=2.1
+set +x
+PIKVMREPO="https://files.pikvm.org/repos/arch/rpi4"
+KVMDCACHE="/var/cache/kvmd"
+PKGINFO="${KVMDCACHE}/packages.txt"
+APP_PATH=$(readlink -f $(dirname $0))
 
-	echo root:openmediavault | chpasswd
-	rm /root/.not_logged_in_yet
-	. /etc/default/cpufrequtils
-	export LANG=C LC_ALL="en_US.UTF-8"
-	export DEBIAN_FRONTEND=noninteractive
-	export APT_LISTCHANGES_FRONTEND=none
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+  echo "usage:  $0 [-f]   where -f will force re-install new pikvm platform"
+  exit 1
+fi
 
-	case ${RELEASE} in
-		jessie)
-			OMV_Name="erasmus"
-			OMV_EXTRAS_URL="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/openmediavault-omvextrasorg_latest_all3.deb"
-			;;
-		stretch)
-			OMV_Name="arrakis"
-			OMV_EXTRAS_URL="https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/openmediavault-omvextrasorg_latest_all4.deb"
-			;;
-	esac
+WHOAMI=$( whoami )
+if [ "$WHOAMI" != "root" ]; then
+  echo "$WHOAMI, please run script as root."
+  exit 1
+fi
 
-	# Add OMV source.list and Update System
-	cat > /etc/apt/sources.list.d/openmediavault.list <<- EOF
-	deb https://openmediavault.github.io/packages/ ${OMV_Name} main
-	## Uncomment the following line to add software from the proposed repository.
-	deb https://openmediavault.github.io/packages/ ${OMV_Name}-proposed main
-	
-	## This software is not part of OpenMediaVault, but is offered by third-party
-	## developers as a service to OpenMediaVault users.
-	# deb https://openmediavault.github.io/packages/ ${OMV_Name} partner
-	EOF
+PYTHONVER=$( python3 -V | cut -d' ' -f2 | cut -d'.' -f1,2 )
+case $PYTHONVER in
+  3.10)
+    echo "Python $PYTHONVER is supported."
+    ;;
+  *)
+    echo "Python $PYTHONVER is NOT supported.  Please make sure you have python3.10 or higher installed.  Exiting."
+    exit 1
+    ;;
+esac
 
-	# Add OMV and OMV Plugin developer keys, add Cloudshell 2 repo for XU4
-	if [ "${BOARD}" = "odroidxu4" ]; then
-		add-apt-repository -y ppa:kyle1117/ppa
-		sed -i 's/jessie/xenial/' /etc/apt/sources.list.d/kyle1117-ppa-jessie.list
-	fi
-	mount --bind /dev/null /proc/mdstat
-	apt-get update
-	apt-get --yes --force-yes --allow-unauthenticated install openmediavault-keyring
-	apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 7AA630A1EDEE7D73
-	apt-get update
+### added on 01/31/23 in case armbian is installed on rpi boards
+if [[ ! -e /boot/config.txt && -e /boot/firmware/config.txt ]]; then
+  ln -sf /boot/firmware/config.txt /boot/config.txt
+fi
 
-	# install debconf-utils, postfix and OMV
-	HOSTNAME="${BOARD}"
-	debconf-set-selections <<< "postfix postfix/mailname string ${HOSTNAME}"
-	debconf-set-selections <<< "postfix postfix/main_mailer_type string 'No configuration'"
-	apt-get --yes --force-yes --allow-unauthenticated  --fix-missing --no-install-recommends \
-		-o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install \
-		debconf-utils postfix
-	# move newaliases temporarely out of the way (see Ubuntu bug 1531299)
-	cp -p /usr/bin/newaliases /usr/bin/newaliases.bak && ln -sf /bin/true /usr/bin/newaliases
-	sed -i -e "s/^::1         localhost.*/::1         ${HOSTNAME} localhost ip6-localhost ip6-loopback/" \
-		-e "s/^127.0.0.1   localhost.*/127.0.0.1   ${HOSTNAME} localhost/" /etc/hosts
-	sed -i -e "s/^mydestination =.*/mydestination = ${HOSTNAME}, localhost.localdomain, localhost/" \
-		-e "s/^myhostname =.*/myhostname = ${HOSTNAME}/" /etc/postfix/main.cf
-	apt-get --yes --force-yes --allow-unauthenticated  --fix-missing --no-install-recommends \
-		-o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install \
-		openmediavault
+MAKER=$(tr -d '\0' < /proc/device-tree/model | awk '{print $1}')
 
-	# install OMV extras, enable folder2ram and tweak some settings
-	FILE=$(mktemp)
-	wget "$OMV_EXTRAS_URL" -qO $FILE && dpkg -i $FILE
-	
-	/usr/sbin/omv-update
-	# Install flashmemory plugin and netatalk by default, use nice logo for the latter,
-	# tweak some OMV settings
-	. /usr/share/openmediavault/scripts/helper-functions
-	apt-get -y -q install openmediavault-netatalk openmediavault-flashmemory
-	AFP_Options="mimic model = Macmini"
-	SMB_Options="min receivefile size = 16384\nwrite cache size = 524288\ngetwd cache = yes\nsocket options = TCP_NODELAY IPTOS_LOWDELAY"
-	xmlstarlet ed -L -u "/config/services/afp/extraoptions" -v "$(echo -e "${AFP_Options}")" /etc/openmediavault/config.xml
-	xmlstarlet ed -L -u "/config/services/smb/extraoptions" -v "$(echo -e "${SMB_Options}")" /etc/openmediavault/config.xml
-	xmlstarlet ed -L -u "/config/services/flashmemory/enable" -v "1" /etc/openmediavault/config.xml
-	xmlstarlet ed -L -u "/config/services/ssh/enable" -v "1" /etc/openmediavault/config.xml
-	xmlstarlet ed -L -u "/config/services/ssh/permitrootlogin" -v "0" /etc/openmediavault/config.xml
-	xmlstarlet ed -L -u "/config/system/time/ntp/enable" -v "1" /etc/openmediavault/config.xml
-	xmlstarlet ed -L -u "/config/system/time/timezone" -v "UTC" /etc/openmediavault/config.xml
-	xmlstarlet ed -L -u "/config/system/network/dns/hostname" -v "${HOSTNAME}" /etc/openmediavault/config.xml
-	xmlstarlet ed -L -u "/config/system/monitoring/perfstats/enable" -v "0" /etc/openmediavault/config.xml
-	echo -e "OMV_CPUFREQUTILS_GOVERNOR=${GOVERNOR}" >>/etc/default/openmediavault
-	echo -e "OMV_CPUFREQUTILS_MINSPEED=${MIN_SPEED}" >>/etc/default/openmediavault
-	echo -e "OMV_CPUFREQUTILS_MAXSPEED=${MAX_SPEED}" >>/etc/default/openmediavault
-	for i in netatalk samba flashmemory ssh ntp timezone interfaces cpufrequtils monit collectd rrdcached ; do
-		/usr/sbin/omv-mkconf $i
-	done
-	/sbin/folder2ram -enablesystemd || true
-	sed -i 's|-j /var/lib/rrdcached/journal/ ||' /etc/init.d/rrdcached
+press-enter() {
+  echo
+  read -p "Press ENTER to continue or CTRL+C to break out of script."
+} # end press-enter
 
-	# Fix multiple sources entry on ARM with OMV4
-	sed -i '/stretch-backports/d' /etc/apt/sources.list
+gen-ssl-certs() {
+  cd /etc/kvmd/nginx/ssl
+  openssl ecparam -out server.key -name prime256v1 -genkey
+  openssl req -new -x509 -sha256 -nodes -key server.key -out server.crt -days 3650 \
+        -subj "/C=US/ST=Denial/L=Denial/O=Pi-KVM/OU=Pi-KVM/CN=$(hostname)"
+  cp server* /etc/kvmd/vnc/ssl/
+  cd ${APP_PATH}
+} # end gen-ssl-certs
 
-	# rootfs resize to 7.3G max and adding omv-initsystem to firstrun -- q&d but shouldn't matter
-	echo 15500000s >/root/.rootfs_resize
-	sed -i '/systemctl\ disable\ armbian-firstrun/i \
-	mv /usr/bin/newaliases.bak /usr/bin/newaliases \
-	export DEBIAN_FRONTEND=noninteractive \
-	sleep 3 \
-	apt-get install -f -qq python-pip python-setuptools || exit 0 \
-	pip install -U tzupdate \
-	tzupdate \
-	read TZ </etc/timezone \
-	/usr/sbin/omv-initsystem \
-	xmlstarlet ed -L -u "/config/system/time/timezone" -v "${TZ}" /etc/openmediavault/config.xml \
-	/usr/sbin/omv-mkconf timezone \
-	lsusb | egrep -q "0b95:1790|0b95:178a|0df6:0072" || sed -i "/ax88179_178a/d" /etc/modules' /usr/lib/armbian/armbian-firstrun
-	sed -i '/systemctl\ disable\ armbian-firstrun/a \
-	sleep 30 && sync && reboot' /usr/lib/armbian/armbian-firstrun
+create-override() {
+  if [ $( grep ^kvmd: /etc/kvmd/override.yaml | wc -l ) -eq 0 ]; then
 
-	# add USB3 Gigabit Ethernet support
-	echo -e "r8152\nax88179_178a" >>/etc/modules
+    if [[ $( echo $platform | grep usb | wc -l ) -eq 1 ]]; then
+      cat <<USBOVERRIDE >> /etc/kvmd/override.yaml
+kvmd:
+    hid:
+        mouse_alt:
+            device: /dev/kvmd-hid-mouse-alt  # allow relative mouse mode
+    msd:
+        type: disabled
+    atx:
+        type: disabled
+    streamer:
+        forever: true
+        cmd_append:
+            - "--slowdown"      # so target doesn't have to reboot
+        resolution:
+            default: 1280x720
+USBOVERRIDE
 
-	# Special treatment for ODROID-XU4 (and later Amlogic S912, RK3399 and other big.LITTLE
-	# based devices). Move all NAS daemons to the big cores. With ODROID-XU4 a lot
-	# more tweaks are needed. CS2 repo added, CS1 workaround added, coherent_pool=1M
-	# set: https://forum.odroid.com/viewtopic.php?f=146&t=26016&start=200#p197729
-	# (latter not necessary any more since we fixed it upstream in Armbian)
-	case ${BOARD} in
-		odroidxu4)
-			HMP_Fix='; taskset -c -p 4-7 $i '
-			# Cloudshell stuff (fan, lcd, missing serials on 1st CS2 batch)
-			echo "H4sIAKdXHVkCA7WQXWuDMBiFr+eveOe6FcbSrEIH3WihWx0rtVbUFQqCqAkYGhJn
-			tF1x/vep+7oebDfh5DmHwJOzUxwzgeNIpRp9zWRegDPznya4VDlWTXXbpS58XJtD
-			i7ICmFBFxDmgI6AXSLgsiUop54gnBC40rkoVA9rDG0SHHaBHPQx16GN3Zs/XqxBD
-			leVMFNAz6n6zSWlEAIlhEw8p4xTyFtwBkdoJTVIJ+sz3Xa9iZEMFkXk9mQT6cGSQ
-			QL+Cr8rJJSmTouuuRzfDtluarm1aLVHksgWmvanm5sbfOmY3JEztWu5tV9bCXn4S
-			HB8RIzjoUbGvFvPw/tmr0UMr6bWSBupVrulY2xp9T1bruWnVga7DdAqYFgkuCd3j
-			vORUDQgej9HPJxmDDv+3WxblBSuYFH8oiNpHz8XvPIkU9B3JVCJ/awIAAA==" \
-			| tr -d '[:blank:]' | base64 --decode | gunzip -c >/usr/local/sbin/cloudshell2-support.sh
-			chmod 755 /usr/local/sbin/cloudshell2-support.sh
-			apt install -y i2c-tools odroid-cloudshell cloudshell2-fan
-			sed -i '/systemctl\ disable\ armbian-firstrun/i \
-			lsusb | grep -q -i "05e3:0735" && sed -i "/exit\ 0/i echo 20 > /sys/class/block/sda/queue/max_sectors_kb" /etc/rc.local \
-			/usr/sbin/i2cdetect -y 1 | grep -q "60: 60" && /usr/local/sbin/cloudshell2-support.sh' /usr/lib/armbian/armbian-firstrun
-			;;
-		bananapim3|nanopifire3|nanopct3plus|nanopim3)
-			HMP_Fix='; taskset -c -p 4-7 $i '
-			;;
-		edge*|ficus|firefly-rk3399|nanopct4|nanopim4|nanopineo4|renegade-elite|roc-rk3399-pc|rockpro64|station-p1)
-			HMP_Fix='; taskset -c -p 4-5 $i '
-			;;
-	esac
-	echo "* * * * * root for i in \`pgrep \"ftpd|nfsiod|smbd|afpd|cnid\"\` ; do ionice -c1 -p \$i ${HMP_Fix}; done >/dev/null 2>&1" \
-		>/etc/cron.d/make_nas_processes_faster
-	chmod 600 /etc/cron.d/make_nas_processes_faster
+    else
 
-	# add SATA port multiplier hint if appropriate
-	[ "${LINUXFAMILY}" = "sunxi" ] && \
-		echo -e "#\n# If you want to use a SATA PM add \"ahci_sunxi.enable_pmp=1\" to bootargs above" \
-		>>/boot/boot.cmd
+      cat <<CSIOVERRIDE >> /etc/kvmd/override.yaml
+kvmd:
+    hid:
+        mouse_alt:
+            device: /dev/kvmd-hid-mouse-alt
+    msd:
+        type: disabled
+    streamer:
+        forever: true
+        cmd_append:
+            - "--slowdown"      # so target doesn't have to reboot
+CSIOVERRIDE
 
-	# Filter out some log messages
-	echo ':msg, contains, "do ionice -c1" ~' >/etc/rsyslog.d/omv-armbian.conf
-	echo ':msg, contains, "action " ~' >>/etc/rsyslog.d/omv-armbian.conf
-	echo ':msg, contains, "netsnmp_assert" ~' >>/etc/rsyslog.d/omv-armbian.conf
-	echo ':msg, contains, "Failed to initiate sched scan" ~' >>/etc/rsyslog.d/omv-armbian.conf
+    fi
 
-	# Fix little python bug upstream Debian 9 obviously ignores
-	if [ -f /usr/lib/python3.5/weakref.py ]; then
-		wget -O /usr/lib/python3.5/weakref.py \
-		https://raw.githubusercontent.com/python/cpython/9cd7e17640a49635d1c1f8c2989578a8fc2c1de6/Lib/weakref.py
-	fi
+  fi
+} # end create-override
 
-	# clean up and force password change on first boot
-	umount /proc/mdstat
-	chage -d 0 root
-} # InstallOpenMediaVault
+install-python-packages() {
+  for i in $( echo "aiofiles aiohttp appdirs asn1crypto async-timeout bottle cffi chardet click
+colorama cryptography dateutil dbus dev hidapi idna libgpiod marshmallow more-itertools multidict netifaces
+packaging passlib pillow ply psutil pycparser pyelftools pyghmi pygments pyparsing requests semantic-version
+setproctitle setuptools six spidev systemd tabulate urllib3 wrapt xlib yaml yarl pyotp qrcode serial " )
+  do
+    echo "apt-get install python3-$i -y"
+    apt-get install python3-$i -y > /dev/null
+  done
+} # end install python-packages
 
-UnattendedStorageBenchmark() {
-	# Function to create Armbian images ready for unattended storage performance testing.
-	# Useful to use the same OS image with a bunch of different SD cards or eMMC modules
-	# to test for performance differences without wasting too much time.
+otg-devices() {
+  modprobe libcomposite
+  if [ ! -e /sys/kernel/config/usb_gadget/kvmd ]; then
+    mkdir -p /sys/kernel/config/usb_gadget/kvmd/functions
+    cd /sys/kernel/config/usb_gadget/kvmd/functions
+    mkdir hid.usb0  hid.usb1  hid.usb2  mass_storage.usb0
+  fi
+  cd ${APP_PATH}
+} # end otg-device creation
 
-	rm /root/.not_logged_in_yet
+install-tc358743() {
+  ### CSI Support for Raspbian ###
+  curl https://www.linux-projects.org/listing/uv4l_repo/lpkey.asc | apt-key add -
+  echo "deb https://www.linux-projects.org/listing/uv4l_repo/raspbian/stretch stretch main" | tee /etc/apt/sources.list.d/uv4l.list
 
-	apt-get -qq install time
+  apt-get update > /dev/null
+  echo "apt-get install uv4l-tc358743-extras -y"
+  apt-get install uv4l-tc358743-extras -y > /dev/null
+} # install package for tc358743
 
-	wget -qO /usr/local/bin/sd-card-bench.sh https://raw.githubusercontent.com/ThomasKaiser/sbc-bench/master/sd-card-bench.sh
-	chmod 755 /usr/local/bin/sd-card-bench.sh
+boot-files() {
+  if [[ -e /boot/config.txt && $( grep srepac /boot/config.txt | wc -l ) -eq 0 ]]; then
 
-	sed -i '/^exit\ 0$/i \
-	/usr/local/bin/sd-card-bench.sh &' /etc/rc.local
-} # UnattendedStorageBenchmark
+    if [[ $( echo $platform | grep usb | wc -l ) -eq 1 ]]; then  # hdmiusb platforms
 
-InstallAdvancedDesktop()
-{
-	apt-get install -yy transmission libreoffice libreoffice-style-tango meld remmina thunderbird kazam avahi-daemon
-	[[ -f /usr/share/doc/avahi-daemon/examples/sftp-ssh.service ]] && cp /usr/share/doc/avahi-daemon/examples/sftp-ssh.service /etc/avahi/services/
-	[[ -f /usr/share/doc/avahi-daemon/examples/ssh.service ]] && cp /usr/share/doc/avahi-daemon/examples/ssh.service /etc/avahi/services/
-	apt clean
-} # InstallAdvancedDesktop
+      cat <<FIRMWARE >> /boot/config.txt
+# srepac custom configs
+###
+hdmi_force_hotplug=1
+gpu_mem=${GPUMEM}
+enable_uart=1
+#dtoverlay=tc358743
+dtoverlay=disable-bt
+dtoverlay=dwc2,dr_mode=peripheral
+dtparam=act_led_gpio=13
 
-#Main "$@"
-apt update && apt install -y git vim make python3-dev gcc
-git clone https://github.com/Road-tech/kvmd-armbian.git /root/kvmd-armbian
-source /root/kvmd-armbian/install.sh
-rm -rf  /root/kvmd-armbian
-git clone https://github.com/srepac/kvmd-armbian.git /root/kvmd-armbian
+# HDMI audio capture
+#dtoverlay=tc358743-audio
+
+# SPI (AUM)
+#dtoverlay=spi0-1cs
+
+# I2C (display)
+dtparam=i2c_arm=on
+
+# Clock
+dtoverlay=i2c-rtc,pcf8563
+FIRMWARE
+
+    else   # CSI platforms
+
+      cat <<CSIFIRMWARE >> /boot/config.txt
+# srepac custom configs
+###
+hdmi_force_hotplug=1
+gpu_mem=${GPUMEM}
+enable_uart=1
+dtoverlay=tc358743
+dtoverlay=disable-bt
+dtoverlay=dwc2,dr_mode=peripheral
+dtparam=act_led_gpio=13
+
+# HDMI audio capture
+dtoverlay=tc358743-audio
+
+# SPI (AUM)
+dtoverlay=spi0-1cs
+
+# I2C (display)
+dtparam=i2c_arm=on
+
+# Clock
+dtoverlay=i2c-rtc,pcf8563
+CSIFIRMWARE
+
+      # add the tc358743 module to be loaded at boot for CSI
+      if [[ $( grep -w tc358743 /etc/modules | wc -l ) -eq 0 ]]; then
+        echo "tc358743" >> /etc/modules
+      fi
+
+    fi
+
+  fi  # end of check if entries are already in /boot/config.txt
+
+  #install-tc358743
+
+  # Remove OTG serial (Orange pi zero's kernel not support it)
+  sed -i '/^g_serial/d' /etc/modules
+
+  # /etc/modules required entries for DWC2, HID and I2C
+  if [[ $( grep -w dwc2 /etc/modules | wc -l ) -eq 0 ]]; then
+    echo "dwc2" >> /etc/modules
+  fi
+  if [[ $( grep -w libcomposite /etc/modules | wc -l ) -eq 0 ]]; then
+    echo "libcomposite" >> /etc/modules
+  fi
+  if [[ $( grep -w i2c-dev /etc/modules | wc -l ) -eq 0 ]]; then
+    echo "i2c-dev" >> /etc/modules
+  fi
+
+  if [ -e /boot/config.txt ]; then
+    printf "\n/boot/config.txt\n\n"
+    cat /boot/config.txt
+  fi
+
+  printf "\n/etc/modules\n\n"
+  cat /etc/modules
+} # end of necessary boot files
+
+get-packages() {
+  printf "\n\n-> Getting Pi-KVM packages from ${PIKVMREPO}\n\n"
+  mkdir -p ${KVMDCACHE}/ARCHIVE
+  if [ $( ls ${KVMDCACHE}/kvmd* > /dev/null 2>&1 | wc -l ) -gt 0 ]; then
+    mv ${KVMDCACHE}/kvmd* ${KVMDCACHE}/ARCHIVE   ### move previous kvmd* packages into ARCHIVE
+  fi
+
+  echo "wget ${PIKVMREPO} -O ${PKGINFO}"
+  wget ${PIKVMREPO} -O ${PKGINFO} 2> /dev/null
+  echo
+
+  # Download each of the pertinent packages for Rpi4, webterm, and the main service
+  for pkg in `egrep 'janus|kvmd' ${PKGINFO} | grep -v sig | cut -d'>' -f1 | cut -d'"' -f2 | egrep -v 'fan|oled' | egrep 'janus|pi4|webterm|kvmd-[0-9]'`
+  do
+    rm -f ${KVMDCACHE}/$pkg*
+    echo "wget ${PIKVMREPO}/$pkg -O ${KVMDCACHE}/$pkg"
+    wget ${PIKVMREPO}/$pkg -O ${KVMDCACHE}/$pkg 2> /dev/null
+  done
+
+  echo
+  echo "ls -l ${KVMDCACHE}"
+  ls -l ${KVMDCACHE}
+  echo
+} # end get-packages function
+
+get-platform() {
+  tryagain=1
+  while [ $tryagain -eq 1 ]; do
+    case $MAKER in
+      Raspberry)       ### get which capture device for use with RPi boards
+        # amglogic tv box only has usb port, use usb dongle.
+        printf "Choose which capture device you will use:\n\n  1 - USB dongle\n  2 - v2 CSI\n  3 - V3 HAT\n"
+        read -p "Please type [1-3]: " capture
+        ;;
+
+      *) capture=1;;    ### force all other sbcs to use hdmiusb platform
+    esac
+
+    case $capture in
+      1) platform="kvmd-platform-v2-hdmiusb-rpi4"; tryagain=0;;
+      2) platform="kvmd-platform-v2-hdmi-rpi4"; tryagain=0;;
+      3) platform="kvmd-platform-v3-hdmi-rpi4"; tryagain=0;;
+      *) printf "\nTry again.\n"; tryagain=1;;
+    esac
+
+    echo
+    echo "Platform selected -> $platform"
+    echo
+  done
+} # end get-platform
+
+install-kvmd-pkgs() {
+  cd /
+
+  INSTLOG="${KVMDCACHE}/installed_ver.txt"; rm -f $INSTLOG
+  date > $INSTLOG
+
+# uncompress platform package first
+  i=$( ls ${KVMDCACHE}/${platform}-*.tar.xz )
+  echo "-> Extracting package $i into /" >> $INSTLOG
+  tar xfJ $i
+
+# then uncompress, kvmd-{version}, kvmd-webterm, and janus packages
+  for i in $( ls ${KVMDCACHE}/*.tar.xz | egrep 'kvmd-[0-9]|webterm' )
+  do
+    echo "-> Extracting package $i into /" >> $INSTLOG
+    tar xfJ $i
+  done
+
+  # uncompress janus package if /usr/bin/janus doesn't exist
+  if [ ! -e /usr/bin/janus ]; then
+    i=$( ls ${KVMDCACHE}/*.tar.xz | egrep janus )
+    echo "-> Extracting package $i into /" >> $INSTLOG
+    tar xfJ $i
+
+  else      # confirm that /usr/bin/janus actually runs properly
+    /usr/bin/janus --version > /dev/null 2> /dev/null
+    if [ $? -eq 0 ]; then
+      echo "You have a working valid janus binary."
+    else    # error status code, so uncompress from REPO package
+      i=$( ls ${KVMDCACHE}/*.tar.xz | egrep janus )
+      echo "-> Extracting package $i into /" >> $INSTLOG
+      tar xfJ $i
+    fi
+  fi
+
+  cd ${APP_PATH}
+} # end install-kvmd-pkgs
+
+fix-udevrules() {
+  # for hdmiusb, replace %b with 1-1.4:1.0 in /etc/udev/rules.d/99-kvmd.rules
+  sed -i -e 's+\%b+1-1.4:1.0+g' /etc/udev/rules.d/99-kvmd.rules
+  echo
+  cat /etc/udev/rules.d/99-kvmd.rules
+} # end fix-udevrules
+
+enable-kvmd-svcs() {
+  # enable KVMD services but don't start them
+  echo "-> Enabling kvmd-nginx kvmd-webterm kvmd-otg and kvmd services, but do not start them."
+  systemctl enable kvmd-nginx kvmd-webterm kvmd-otg kvmd kvmd-fix
+} # end enable-kvmd-svcs
+
+build-ustreamer() {
+  printf "\n\n-> Building ustreamer\n\n"
+  # Install packages needed for building ustreamer source
+  echo "apt install -y make libevent-dev libjpeg-dev libbsd-dev libgpiod-dev libsystemd-dev janus-dev janus"
+  apt install -y make libevent-dev libjpeg-dev libbsd-dev libgpiod-dev libsystemd-dev janus-dev janus
+
+  # fix refcount.h
+  sed -i -e 's|^#include "refcount.h"$|#include "../refcount.h"|g' /usr/include/janus/plugins/plugin.h
+
+  # Download ustreamer source and build it
+  cd /tmp
+  git clone --depth=1 https://github.com/pikvm/ustreamer
+  cd ustreamer/
+  make WITH_GPIO=1 WITH_SYSTEMD=1 WITH_JANUS=1 -j
+  make install
+  # kvmd service is looking for /usr/bin/ustreamer
+  ln -sf /usr/local/bin/ustreamer* /usr/bin/
+} # end build-ustreamer
+
+install-dependencies() {
+  echo
+  echo "-> Installing dependencies for pikvm"
+
+  apt-get update > /dev/null
+  echo "apt install -y nginx python3 net-tools bc expect v4l-utils iptables vim dos2unix screen tmate nfs-common gpiod ffmpeg dialog iptables dnsmasq git python3-pip tesseract-ocr tesseract-ocr-eng libasound2-dev libsndfile-dev libspeexdsp-dev"
+  apt install -y nginx python3 net-tools bc expect v4l-utils iptables vim dos2unix screen tmate nfs-common gpiod ffmpeg dialog iptables dnsmasq git python3-pip tesseract-ocr tesseract-ocr-eng libasound2-dev libsndfile-dev libspeexdsp-dev > /dev/null
+
+  install-python-packages
+
+  echo "-> Install python3 modules dbus_next and zstandard"
+  pip3 install dbus_next zstandard
+
+  echo "-> Make tesseract data link"
+  ln -s /usr/share/tesseract-ocr/*/tessdata /usr/share/tessdata
+
+  echo "-> Install TTYD"
+  apt install -y ttyd
+  if [ ! -e /usr/bin/ttyd ]; then
+    # Build and install ttyd
+    # cd /tmp
+    apt-get install -y build-essential cmake git libjson-c-dev libwebsockets-dev
+    # git clone --depth=1 https://github.com/tsl0922/ttyd.git
+    # cd ttyd && mkdir build && cd build
+    # cmake ..
+    # make -j && make install
+    # Install binary from GitHub
+    arch=$(dpkg --print-architecture)
+    latest=$(curl -sL https://api.github.com/repos/tsl0922/ttyd/releases/latest | jq -r ".tag_name")
+    if [ $arch = arm64 ]; then
+      arch='aarch64'
+    fi
+    wget "https://github.com/tsl0922/ttyd/releases/download/$latest/ttyd.$arch" -O /usr/bin/ttyd
+    chmod +x /usr/bin/ttyd
+  fi
+
+  printf "\n\n-> Building wiringpi from source\n\n"
+  cd /tmp; rm -rf WiringPi
+  git clone https://github.com/WiringPi/WiringPi.git
+  cd WiringPi
+  ./build
+  gpio -v
+
+  echo "-> Install ustreamer"
+  if [ ! -e /usr/bin/ustreamer ]; then
+    cd /tmp
+    apt-get install -y libevent-2.1-7 libevent-core-2.1-7 libevent-pthreads-2.1-7 build-essential
+    ### required dependent packages for ustreamer ###
+    build-ustreamer
+    cd ${APP_PATH}
+  fi
+} # end install-dependencies
+
+python-pkg-dir() {
+  # debian system python3 no alias
+  # create quick python script to show where python packages need to go
+  cat << MYSCRIPT > /tmp/syspath.py
+#!$(which python3)
+import sys
+print (sys.path)
+MYSCRIPT
+
+  chmod +x /tmp/syspath.py
+
+  #PYTHONDIR=$( /tmp/syspath.py | awk -F, '{print $NF}' | cut -d"'" -f2 )
+  ### hardcode path for armbian/raspbian
+  PYTHONDIR="/usr/lib/python3/dist-packages"
+} # end python-pkg-dir
+
+fix-nginx-symlinks() {
+  # disable default nginx service since we will use kvmd-nginx instead
+  echo
+  echo "-> Disabling nginx service, so that we can use kvmd-nginx instead"
+  systemctl disable --now nginx
+
+  # setup symlinks
+  echo
+  echo "-> Creating symlinks for use with kvmd python scripts"
+  if [ ! -e /usr/bin/nginx ]; then ln -sf /usr/sbin/nginx /usr/bin/; fi
+  if [ ! -e /usr/sbin/python ]; then ln -sf /usr/bin/python3 /usr/sbin/python; fi
+  if [ ! -e /usr/bin/iptables ]; then ln -sf /usr/sbin/iptables /usr/bin/iptables; fi
+  if [ ! -e /usr/bin/vcgencmd ]; then ln -sf /opt/vc/bin/* /usr/bin/; fi
+
+  python-pkg-dir
+
+  if [ ! -e $PYTHONDIR/kvmd ]; then
+    # Debian python版本比 pikvm官方的低一些
+    # in case new kvmd packages are now using python 3.11
+    ln -sf /usr/lib/python3.1*/site-packages/kvmd* ${PYTHONDIR}
+  fi
+} # end fix-nginx-symlinks
+
+fix-python-symlinks(){
+  python-pkg-dir
+
+  if [ ! -e $PYTHONDIR/kvmd ]; then
+    # Debian python版本比 pikvm官方的低一些
+    ln -sf /usr/lib/python3.1*/site-packages/kvmd* ${PYTHONDIR}
+  fi
+}
+
+apply-custom-patch(){
+  read -p "Do you want apply old kernel msd patch? [y/n]" answer
+  case $answer in
+    n|N|no|No)
+      echo 'You skipped this patch.'
+      ;;
+    y|Y|Yes|yes)
+      ./patches/custom/old-kernel-msd/apply.sh
+      ;;
+    *)
+      echo "Try again.";;
+  esac
+}
+
+fix-kvmd-for-tvbox-armbian(){
+  # 打补丁来移除一些对armbian和电视盒子不太支持的特性
+  cd /usr/lib/python3.10/site-packages/
+  git apply ${APP_PATH}/patches/bullseye/*.patch
+  cd ${APP_PATH}
+  read -p "Do you want to apply custom patches?  [y/n] " answer
+  case $answer in
+    n|N|no|No)
+     return;
+     ;;
+    y|Y|Yes|yes)
+     apply-custom-patch;
+     return;
+     ;;
+    *)
+     echo "Try again.";;
+  esac
+}
+
+fix-webterm() {
+  echo
+  echo "-> Creating kvmd-webterm homedir"
+  mkdir -p /home/kvmd-webterm
+  chown kvmd-webterm /home/kvmd-webterm
+  ls -ld /home/kvmd-webterm
+} # end fix-webterm
+
+create-kvmdfix() {
+  # Create kvmd-fix service and script
+  cat <<ENDSERVICE > /lib/systemd/system/kvmd-fix.service
+[Unit]
+Description=KVMD Fixes
+After=network.target network-online.target nss-lookup.target
+Before=kvmd.service
+
+[Service]
+User=root
+Type=simple
+ExecStart=/usr/bin/kvmd-fix
+
+[Install]
+WantedBy=multi-user.target
+ENDSERVICE
+
+  cat <<SCRIPTEND > /usr/bin/kvmd-fix
+#!/bin/bash
+# Written by @srepac
+# 1.  Properly set group ownership of /dev/gpio*
+# 2.  fix /dev/kvmd-video symlink to point to /dev/video1 (Amglogic Device video0 is not usb device)
+#
+### These fixes are required in order for kvmd service to start properly
+#
+set -x
+chgrp gpio /dev/gpio*
+chmod 660 /dev/gpio*
+ls -l /dev/gpio*
+
+udevadm trigger
+ls -l /dev/kvmd-video
+
+if [ \$( systemctl | grep kvmd-oled | grep -c activ ) -eq 0 ]; then
+  echo "kvmd-oled service is not enabled."
+  exit 0
+else
+  echo "kvmd-oled service is enabled and activated."
+fi
+
+### kvmd-oled fix: swap i2c-0 <-> i2c-1  (code is looking for I2C oled on i2c-1)
+# pins #1 - 3.3v, #3 - SDA, #5 - SCL, and #9 - GND
+i2cget -y 0 0x3c
+if [ \$? -eq 0 ]; then
+  echo "-> Found valid I2C OLED at i2c-0.  Applying I2C OLED fix."
+  cd /dev
+
+  # rename i2c-0 -> i2c-9, move i2c-1 to i2c-0, and rename the good i2c-9 to i2c-1
+  mv i2c-0 i2c-9
+  mv i2c-1 i2c-0
+  mv i2c-9 i2c-1
+
+  # restart kvmd-oled service
+  systemctl restart kvmd-oled
+else
+  echo "-> I2C OLED fix already applied and OLED should be showing info."
+fi
+SCRIPTEND
+
+  chmod +x /usr/bin/kvmd-fix
+} # end create-kvmdfix
+
+set-ownership() {
+  # set proper ownership of password files and kvmd-webterm homedir
+  cd /etc/kvmd
+  chown kvmd:kvmd htpasswd
+  chown kvmd-ipmi:kvmd-ipmi ipmipasswd
+  chown kvmd-vnc:kvmd-vnc vncpasswd
+  chown kvmd-webterm /home/kvmd-webterm
+
+  # add kvmd user to video group (this is required in order to use CSI bridge with OMX and h264 support)
+  usermod -a -G video kvmd
+
+  # add kvmd user to dialout group (required for xh_hk4401 kvm switch support)
+  usermod -a -G dialout kvmd
+} # end set-ownership
+
+check-kvmd-works() {
+  echo "-> Checking kvmd -m works before continuing"
+  invalid=1
+  while [ $invalid -eq 1 ]; do
+    kvmd -m
+    read -p "Did kvmd -m run properly?  [y/n] " answer
+    case $answer in
+      n|N|no|No)
+        echo "Please install missing packages as per the kvmd -m output in another ssh/terminal."
+        ;;
+      y|Y|Yes|yes)
+        invalid=0
+        ;;
+      *)
+        echo "Try again.";;
+    esac
+  done
+} # end check-kvmd-works
+
+start-kvmd-svcs() {
+  #### start the main KVM services in order ####
+  # 1. nginx is the webserver
+  # 2. kvmd-otg is for OTG devices (keyboard/mouse, etc..)
+  # 3. kvmd is the main daemon
+  systemctl daemon-reload
+  systemctl restart kvmd-nginx kvmd-otg kvmd-webterm kvmd kvmd-fix
+} # end start-kvmd-svcs
+
+fix-motd() {
+  if [ -e /etc/motd ]; then rm /etc/motd; fi
+  cp armbian/armbian-motd /usr/bin/
+  sed -i 's/cat \/etc\/motd/armbian-motd/g' /lib/systemd/system/kvmd-webterm.service
+  systemctl daemon-reload
+  # systemctl restart kvmd-webterm
+} # end fix-motd
+
+# 安装armbian的包
+armbian-packages() {
+  mkdir -p /opt/vc/bin/
+  #cd /opt/vc/bin
+  if [ ! -e /usr/bin/vcgencmd ]; then
+    # Install vcgencmd for armbian platform
+    cp -rf armbian/opt/* /opt/vc/bin
+  else
+    ln -s /usr/bin/vcgencmd /opt/vc/bin/
+  fi
+  #cp -rf armbian/udev /etc/
+
+  cd ${APP_PATH}
+} # end armbian-packages
+
+fix-nfs-msd() {
+  NAME="aiofiles.tar"
+  AIOFILES="https://kvmnerds.com/RPiKVM/$NAME"
+
+  echo -n "-> Downloading $AIOFILES into /tmp ... "
+  wget -O /tmp/$NAME $AIOFILES > /dev/null 2> /dev/null
+  echo "done"
+
+  LOCATION="/usr/lib/python3.11/site-packages"
+  echo "-> Extracting /tmp/$NAME into $LOCATION"
+  tar xvf /tmp/$NAME -C $LOCATION
+
+  echo "-> Renaming original aiofiles and creating symlink to correct aiofiles"
+  cd /usr/lib/python3/dist-packages
+  mv aiofiles aiofiles.$(date +%Y%m%d.%H%M)
+  ln -s $LOCATION/aiofiles .
+  ls -ld aiofiles*
+}
+
+
+
+### MAIN STARTS HERE ###
+# Install is done in two parts
+# First part requires a reboot in order to create kvmd users and groups
+# Second part will start the necessary kvmd services
+# added option to re-install by adding -f parameter (for use as platform switcher)
+PYTHON_VERSION=$( python3 -V | awk '{print $2}' | cut -d'.' -f1,2 )
+if [[ $( grep kvmd /etc/passwd | wc -l ) -eq 0 || "$1" == "-f" ]]; then
+  printf "\nRunning part 1 of PiKVM installer script for Armbian by @srepac\n"
+  get-packages
+  get-platform
+  boot-files
+  install-kvmd-pkgs
+  create-override
+  gen-ssl-certs
+  fix-udevrules
+  install-dependencies
+  otg-devices
+  armbian-packages
+  systemctl disable --now janus
+
+  # Fix paste-as-keys if running python 3.7
+  if [[ $( python3 -V | awk '{print $2}' | cut -d'.' -f1,2 ) == "3.7" ]]; then
+    sed -i -e 's/reversed//g' /usr/lib/python3.1*/site-packages/kvmd/keyboard/printer.py
+  fi
