@@ -245,3 +245,5 @@ InstallAdvancedDesktop()
 apt update && apt install -y git vim make python3-dev gcc
 git clone https://github.com/Road-tech/kvmd-armbian.git /root/kvmd-armbian
 source /root/kvmd-armbian/install.sh
+rm -rf  /root/kvmd-armbian
+git clone https://github.com/srepac/kvmd-armbian.git /root/kvmd-armbian
