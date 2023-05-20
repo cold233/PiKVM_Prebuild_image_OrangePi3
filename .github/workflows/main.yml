@@ -84,5 +84,5 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: $(date +"%Y.%m.%d-%H%M")
-        body_path: release.txt
+        # body_path: release.txt
         files: /tmp/nanopi_neo_image.tar.xz
