@@ -69,20 +69,12 @@ jobs:
         name: Nanopi_neo_image
         path: /tmp/nanopi_neo_image.tar.xz
 
-    - name: Generate release tag
-      id: tag
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
-      run: |
-        echo "::set-output name=release_tag::$(date +"%Y.%m.%d-%H%M")"
-        touch release.txt
-        echo "::set-output name=status::success"
-
     - name: Upload firmware to release
       uses: softprops/action-gh-release@v1
       if: steps.build.outputs.status == 'success' && !cancelled()
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: $(date +"%Y.%m.%d-%H%M")
+        # tag_name: $(date +"%Y.%m.%d-%H%M")
         # body_path: release.txt
         files: /tmp/nanopi_neo_image.tar.xz
