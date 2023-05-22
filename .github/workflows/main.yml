@@ -3,6 +3,10 @@ name: Build Armbian
 on:
   repository_dispatch:
   workflow_dispatch:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
 #  schedule:
 #    - cron: 0 8 * * 5
 #  watch:
@@ -52,15 +56,17 @@ jobs:
     - name: Build Armbian
       id: build
       run: |
-        cd build
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
-        echo "cp userpatches/customize-image.sh"
-        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
-        echo "./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy"
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
+        # cd build
+        # ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
+        # echo "cp userpatches/customize-image.sh"
+        # [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
+        # echo "./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy"
+        # ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
         echo "::set-output name=status::success"
-        cd  output/images
-        tar -Jcvf /tmp/nanopi_neo_image.tar.xz  *.img
+        #  cd  output/images
+        # tar -Jcvf /tmp/nanopi_neo_image.tar.xz  *.img
+        tar -Jcvf /tmp/nanopi_neo_image.tar.xz build
+        
 
     - name: Upload Armbian image
       uses: actions/upload-artifact@master
@@ -75,6 +81,18 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        # tag_name: $(date +"%Y.%m.%d-%H%M")
+        tag_name: $(date +"%Y.%m.%d-%H%M")
         # body_path: release.txt
         files: /tmp/nanopi_neo_image.tar.xz
+        
+    - name: Create Release and Upload Release Asset
+      uses: softprops/action-gh-release@v1
+      if: steps.build.outputs.status == 'success' && !cancelled()
+      with:
+        tag_name: ${{ github.ref }}
+        name: Release ${{ github.ref }}
+        body: TODO New Release.
+        draft: false
+        prerelease: false
+        files: |
+          /tmp/nanopi_neo_image.tar.xz 
