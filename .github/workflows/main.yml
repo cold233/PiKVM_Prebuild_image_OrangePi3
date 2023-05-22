@@ -3,8 +3,6 @@ name: Build Armbian
 on:
   repository_dispatch:
   workflow_dispatch:
-  push:
-    # Sequence of patterns matched against refs/tags
 
 env:
   UPLOAD_IMAGE: true
