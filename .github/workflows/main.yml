@@ -5,17 +5,12 @@ on:
   workflow_dispatch:
   push:
     # Sequence of patterns matched against refs/tags
-    tags:
-      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
-#  schedule:
-#    - cron: 0 8 * * 5
-#  watch:
-#    types: started
 
 env:
   UPLOAD_IMAGE: true
   CUSTOMIZATIOM_SCRIPT: userpatches/customize-image.sh
   KERNEL_CONFIG: config
+  UPLOAD_RELEASE: true
 
 jobs:
   build:
@@ -75,14 +70,18 @@ jobs:
         name: Nanopi_neo_image
         path: /tmp/nanopi_neo_image.tar.xz
         
-    - name: Create Release and Upload Release Asset
+    - name: Generate release tag
+      id: tag
+      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      run: |
+        echo "::set-output name=release_tag::$(date +"%Y.%m.%d-%H%M")"
+        echo "::set-output name=status::success"
+    
+    - name: Upload image to release
       uses: softprops/action-gh-release@v1
-      if: steps.build.outputs.status == 'success' && !cancelled()
+      if: steps.tag.outputs.status == 'success' && !cancelled()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        name: Release ${{ github.ref }}
-        body: TODO New Release.
-        draft: false
-        prerelease: false
-        files: |
-          /tmp/nanopi_neo_image.tar.xz 
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        files: /tmp/nanopi_neo_image.tar.xz 
