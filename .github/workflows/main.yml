@@ -47,7 +47,6 @@ jobs:
 #        ./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy
         
     - name: Parepre Armbian Env
-      id: build
       run: |
         cd build
         ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
