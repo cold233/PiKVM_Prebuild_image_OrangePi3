@@ -74,16 +74,6 @@ jobs:
       with:
         name: Nanopi_neo_image
         path: /tmp/nanopi_neo_image.tar.xz
-
-    - name: Upload firmware to release
-      uses: softprops/action-gh-release@v1
-      if: steps.build.outputs.status == 'success' && !cancelled()
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: $(date +"%Y.%m.%d-%H%M")
-        # body_path: release.txt
-        files: /tmp/nanopi_neo_image.tar.xz
         
     - name: Create Release and Upload Release Asset
       uses: softprops/action-gh-release@v1
