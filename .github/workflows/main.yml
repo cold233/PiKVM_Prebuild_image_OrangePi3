@@ -55,9 +55,8 @@ jobs:
       id: build
       run: |
         cd build
-        echo "cp userpatches/customize-image.sh"
+        echo "cp userpatches/customize-image.sh and compile"
         [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
-        echo "./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy"
         ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
         echo "::set-output name=status::success"
         cd  output/images
