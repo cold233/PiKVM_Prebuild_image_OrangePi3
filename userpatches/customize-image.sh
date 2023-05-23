@@ -11,6 +11,25 @@ setproctitle setuptools six spidev systemd tabulate urllib3 wrapt xlib yaml yarl
   done
 } # end install python-packages
 
+build-ustreamer() {
+  printf "\n\n-> Building ustreamer\n\n"
+  # Install packages needed for building ustreamer source
+  echo "apt install -y make libevent-dev libjpeg-dev libbsd-dev libgpiod-dev libsystemd-dev janus-dev janus"
+  apt install -y make libevent-dev libjpeg-dev libbsd-dev libgpiod-dev libsystemd-dev janus-dev janus
+
+  # fix refcount.h
+  sed -i -e 's|^#include "refcount.h"$|#include "../refcount.h"|g' /usr/include/janus/plugins/plugin.h
+
+  # Download ustreamer source and build it
+  cd /tmp
+  git clone --depth=1 https://github.com/pikvm/ustreamer
+  cd ustreamer/
+  make WITH_GPIO=1 WITH_SYSTEMD=1 WITH_JANUS=1 -j
+  make install
+  # kvmd service is looking for /usr/bin/ustreamer
+  ln -sf /usr/local/bin/ustreamer* /usr/bin/
+} # end build-ustreamer
+
 install-dependencies() {
   echo
   echo "-> Installing dependencies for pikvm"
@@ -63,25 +82,6 @@ install-dependencies() {
     cd ${APP_PATH}
   fi
 } # end install-dependencies
-
-build-ustreamer() {
-  printf "\n\n-> Building ustreamer\n\n"
-  # Install packages needed for building ustreamer source
-  echo "apt install -y make libevent-dev libjpeg-dev libbsd-dev libgpiod-dev libsystemd-dev janus-dev janus"
-  apt install -y make libevent-dev libjpeg-dev libbsd-dev libgpiod-dev libsystemd-dev janus-dev janus
-
-  # fix refcount.h
-  sed -i -e 's|^#include "refcount.h"$|#include "../refcount.h"|g' /usr/include/janus/plugins/plugin.h
-
-  # Download ustreamer source and build it
-  cd /tmp
-  git clone --depth=1 https://github.com/pikvm/ustreamer
-  cd ustreamer/
-  make WITH_GPIO=1 WITH_SYSTEMD=1 WITH_JANUS=1 -j
-  make install
-  # kvmd service is looking for /usr/bin/ustreamer
-  ln -sf /usr/local/bin/ustreamer* /usr/bin/
-} # end build-ustreamer
 
 apt update
 apt install -y git vim make python3-dev gcc
