@@ -1,5 +1,9 @@
 #!/bin/bash
 
+PIKVMREPO="https://files.pikvm.org/repos/arch/rpi4"
+KVMDCACHE="/var/cache/kvmd"
+PKGINFO="${KVMDCACHE}/packages.txt"
+
 install-python-packages() {
   for i in $( echo "aiofiles aiohttp appdirs asn1crypto async-timeout bottle cffi chardet click
 colorama cryptography dateutil dbus dev hidapi idna libgpiod marshmallow more-itertools multidict netifaces
@@ -83,8 +87,34 @@ install-dependencies() {
   fi
 } # end install-dependencies
 
+get-packages() {
+  printf "\n\n-> Getting Pi-KVM packages from ${PIKVMREPO}\n\n"
+  mkdir -p ${KVMDCACHE}/ARCHIVE
+  if [ $( ls ${KVMDCACHE}/kvmd* > /dev/null 2>&1 | wc -l ) -gt 0 ]; then
+    mv ${KVMDCACHE}/kvmd* ${KVMDCACHE}/ARCHIVE   ### move previous kvmd* packages into ARCHIVE
+  fi
+
+  echo "wget ${PIKVMREPO} -O ${PKGINFO}"
+  wget ${PIKVMREPO} -O ${PKGINFO} 2> /dev/null
+  echo
+
+  # Download each of the pertinent packages for Rpi4, webterm, and the main service
+  for pkg in `egrep 'janus|kvmd' ${PKGINFO} | grep -v sig | cut -d'>' -f1 | cut -d'"' -f2 | egrep -v 'fan|oled' | egrep 'janus|pi4|webterm|kvmd-[0-9]'`
+  do
+    rm -f ${KVMDCACHE}/$pkg*
+    echo "wget ${PIKVMREPO}/$pkg -O ${KVMDCACHE}/$pkg"
+    wget ${PIKVMREPO}/$pkg -O ${KVMDCACHE}/$pkg 2> /dev/null
+  done
+
+  echo
+  echo "ls -l ${KVMDCACHE}"
+  ls -l ${KVMDCACHE}
+  echo
+} # end get-packages function
+
 apt update
 apt install -y git vim make python3-dev gcc
 install-dependencies
+get-packages
 git clone https://github.com/Road-tech/kvmd-armbian.git /root/kvmd-armbian
 
