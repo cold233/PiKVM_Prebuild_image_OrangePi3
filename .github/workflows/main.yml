@@ -46,16 +46,17 @@ jobs:
 #        echo "./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy"
 #        ./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy
         
-    - name: Parepre Armbian Env
-      run: |
-        cd build
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
+#    - name: Parepre Armbian Env
+#      run: |
+#        cd build
+#        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
         
     - name: Add customize-image.sh
       id: build
       run: |
         cd build
         echo "cp userpatches/customize-image.sh and compile"
+        mkdir userpatches
         [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
         ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
         echo "::set-output name=status::success"
