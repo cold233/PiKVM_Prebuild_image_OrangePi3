@@ -49,18 +49,20 @@ jobs:
     - name: Parepre Armbian Env
       run: |
         cd build
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no USE_MAINLINE_GOOGLE_MIRROR
-        
-    - name: Add customize-image.sh
-      id: build
-      run: |
-        cd build
-        echo "cp userpatches/customize-image.sh and compile"
-        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no USE_MAINLINE_GOOGLE_MIRROR
-        echo "::set-output name=status::success"
+        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no USE_MAINLINE_GOOGLE_MIRROR=yes USERPATCHES_PATH=$GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT
         cd  output/images
-        tar -Jcvf /tmp/nanopi_neo_image.tar.xz  *.img        
+        tar -Jcvf /tmp/nanopi_neo_image.tar.xz  *.img 
+        
+#    - name: Add customize-image.sh
+#      id: build
+#      run: |
+#        cd build
+#        echo "cp userpatches/customize-image.sh and compile"
+#        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
+#        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no USE_MAINLINE_GOOGLE_MIRROR
+#        echo "::set-output name=status::success"
+#        cd  output/images
+#        tar -Jcvf /tmp/nanopi_neo_image.tar.xz  *.img        
 
     - name: Upload Armbian image
       uses: actions/upload-artifact@master
