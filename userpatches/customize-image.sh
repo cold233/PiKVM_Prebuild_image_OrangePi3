@@ -117,4 +117,10 @@ apt install -y git vim make python3-dev gcc
 install-dependencies
 get-packages
 git clone https://github.com/Road-tech/kvmd-armbian.git /root/kvmd-armbian
+git clone https://github.com/Road-tech/NanoHatOLED.git /root/NanoHatOLED
+cd /root/NanoHatOLED
+if [ ! -f BakeBit/install.sh ]; then
+    git submodule init
+    git submodule update --remote
+fi
 
