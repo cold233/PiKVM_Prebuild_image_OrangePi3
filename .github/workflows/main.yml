@@ -50,15 +50,15 @@ jobs:
     - name: Parepre Armbian Env
       run: |
         cd build
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no
+        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=yes KERNEL_CONFIGURE=no RELEASE=jammy
    
     - name: Add customize-image.sh
       id: build
       run: |
         cd build
         echo "cp userpatches/customize-image.sh and compile"
-        echo "skip cp"
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no
+        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
+        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=yes KERNEL_CONFIGURE=no RELEASE=jammy
         echo "::set-output name=status::success"
         cd  output/images
         tar -Jcvf /tmp/nanopi_neo_image.tar.xz  *.img        
