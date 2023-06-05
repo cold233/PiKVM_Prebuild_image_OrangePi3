@@ -36,21 +36,11 @@ jobs:
         # curl -L -o armbian.tar.gz $(curl https://api.github.com/repos/armbian/build/releases | awk -F"[tarball_url]" '/tarball_url/{print $x}' | grep $RELEASE_SOURCE_TAG | sed 's/"//g' | sed 's/tarball_url://g' | sed 's/ //g' | sed 's/,//g')
         # tar -xzf armbian.tar.gz
         # rm -rf armbian.tar.gz
-
-#    - name: Download Armbian Kernel
-#      run: |
-#        cd build
-#        echo "cp kernel config"
-#        mkdir $GITHUB_WORKSPACE/build/cache/sources/linux-kernel-worktree/6.1__sunxi__armhf/
-#        [ -e $CUSTOMIZATIOM_SCRIPT ] && cp $GITHUB_WORKSPACE/$KERNEL_CONFIG /$GITHUB_WORKSPACE/build/cache/sources/linux-kernel-worktree/6.1__sunxi__armhf/.config
-#        echo "./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy"
-#        ./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy
-#        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
-        
+     
     - name: Parepre Armbian Env
       run: |
         cd build
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
+        bash ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy
    
     - name: Add customize-image.sh
       id: build
