@@ -45,19 +45,20 @@ jobs:
 #        [ -e $CUSTOMIZATIOM_SCRIPT ] && cp $GITHUB_WORKSPACE/$KERNEL_CONFIG /$GITHUB_WORKSPACE/build/cache/sources/linux-kernel-worktree/6.1__sunxi__armhf/.config
 #        echo "./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy"
 #        ./compile.sh kernel-config BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy
+#        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
         
     - name: Parepre Armbian Env
       run: |
         cd build
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no USERPATCHES_PATH=$GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT
+        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no
    
     - name: Add customize-image.sh
       id: build
       run: |
         cd build
         echo "cp userpatches/customize-image.sh and compile"
-        [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
-        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no 
+        echo "skip cp"
+        ./compile.sh build BOARD=nanopineo BRANCH=current BUILD_MINIMAL=no RELEASE=jammy KERNEL_CONFIGURE=no
         echo "::set-output name=status::success"
         cd  output/images
         tar -Jcvf /tmp/nanopi_neo_image.tar.xz  *.img        
