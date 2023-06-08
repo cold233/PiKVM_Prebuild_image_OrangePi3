@@ -18,7 +18,8 @@
 1. 大幅减少脚本的安装时间。（受限于国内网络和NEO的机能，能将1-2小时的安装时间控制在5-10min）
 2. 支持MSD功能。
 3. 避免在256m内存的NanoPi NEO安装失败的问题（内存不足导致安装失败，但是PiKVM可以直接在256m内存上运行）
-4. 想不到，吹不下去了....
+4. 纯离线安装
+5. 想不到，吹不下去了....
 
 当然能力有限，还是做不到刷入即用，还需要手动执行些步骤。  
 
@@ -32,26 +33,38 @@
 因为MSD需要单独的一个分区用于存放镜像文件，而系统第一次启动后会自动扩展分区占用完所有的TF卡空间。当分区扩展完后再压缩就很困难了，所以启动前先使用磁盘分区工具把剩余的空间占用好，避免Armbian的自动扩展。  
 我在Windows下使用的是[DiskGenius](https://www.diskgenius.cn/)，镜像刷入TF后大概占用2.3G的样子,把剩余的空间设定为扩展就行了，然后激活主分区就行了。不用担心容量分配不合理，我们会在下一步调整。  
 
+![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-04.png?raw=true)  
+![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-05.png?raw=true)  
+![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-06.png?raw=true)  
+
 ### 插电开机  
 第一次启动默认账户为`root`，密码为`1234`。进入系统后会让你设定新密码以及System command shell。  
 在让你设置新的用户账户时即可`Ctrl+C`退出。  
 
-配图1
+![设置用户](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-01.png?raw=true)  
 
 ### 调整MSD分区
-查看分区信息
+查看分区信息  
 ```fidsk -l```
+如图，我这里的TF卡名叫`/dev/mmcblk0`，装系统的主分区为`/dev/mmcblk0p1`,用来存放系统镜像的MSD分区为`/dev/mmcblk0p2`,下同：  
+![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-07.png?raw=true)  
+
 调整分区大小
-```cfdisk /dev/mmcblk0```
+```cfdisk /dev/mmcblk0```  
+通过Resize、Delete、New功能自行分配容量，我习惯对半分，记得用Write保存修改。
+![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-08.png?raw=true)  
+
 重建主分区空间
 ```resize2fs /dev/mmcblk0p1```
 格式化MSD分区
 ```mkfs -t ext4 /dev/mmcblk0p2```
 
 ### 安装Pikvm
+cd到Root用户的主目录下，ls可以看到有两个文件夹。`kvmd-armbian`目录存放PiKVM的安装脚本，`NanoHatOLED`目录存放了OLED的驱动脚本。
+![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-10.png?raw=true)  
 
 ```cd kvmd-armbian && ./install.sh```
-安装分两部分，Part1安装完成后会重启一次，需再次执行以上命令完成Part2安装.  
+安装分两部分，Part1安装完成后会自动重启一次，需再次执行以上命令完成Part2安装.  
 
 ### 挂载MSD分区
 编辑文件  
