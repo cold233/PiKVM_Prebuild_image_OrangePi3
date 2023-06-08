@@ -35,7 +35,6 @@
 
 ![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-04.png?raw=true)  
 ![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-05.png?raw=true)  
-![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-06.png?raw=true)  
 
 ### 插电开机  
 第一次启动默认账户为`root`，密码为`1234`。进入系统后会让你设定新密码以及System command shell。  
@@ -58,7 +57,7 @@ fidsk -l
 cfdisk /dev/mmcblk0
 ```   
 
-用`Delete`最开始预分配的`/dev/mmcblk0p2`分区，然后用`Resize`调整系统主分区`/dev/mmcblk0p2`,接着用`New`将剩余空间创建MSD分区，最后记得用`Write`保存修改,`Quit`推出。
+用`Delete`最开始预分配的`/dev/mmcblk0p2`分区，然后用`Resize`调整系统主分区`/dev/mmcblk0p1`,接着用`New`将剩余空间创建MSD分区，最后记得用`Write`保存修改,`Quit`推出。
 ![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-08.png?raw=true)  
 
 重建主分区空间：  
