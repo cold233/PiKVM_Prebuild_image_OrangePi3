@@ -44,40 +44,75 @@
 ![设置用户](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-01.png?raw=true)  
 
 ### 调整MSD分区
-查看分区信息  
-```fidsk -l```
-如图，我这里的TF卡名叫`/dev/mmcblk0`，装系统的主分区为`/dev/mmcblk0p1`,用来存放系统镜像的MSD分区为`/dev/mmcblk0p2`,下同：  
+查看分区信息：   
+```
+fidsk -l
+```  
+
+如图，我这里的TF卡名叫`/dev/mmcblk0`，装系统的主分区为`/dev/mmcblk0p1`,用来存放系统镜像的MSD分区为`/dev/mmcblk0p2`,下同。  
 ![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-07.png?raw=true)  
 
-调整分区大小
-```cfdisk /dev/mmcblk0```  
-通过Resize、Delete、New功能自行分配容量，我习惯对半分，记得用Write保存修改。
+调整分区大小：  
+
+```
+cfdisk /dev/mmcblk0
+```   
+
+用`Delete`最开始预分配的`/dev/mmcblk0p2`分区，然后用`Resize`调整系统主分区`/dev/mmcblk0p2`,接着用`New`将剩余空间创建MSD分区，最后记得用`Write`保存修改,`Quit`推出。
 ![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-08.png?raw=true)  
 
-重建主分区空间
-```resize2fs /dev/mmcblk0p1```
-格式化MSD分区
-```mkfs -t ext4 /dev/mmcblk0p2```
+重建主分区空间：  
+```
+resize2fs /dev/mmcblk0p1
+```  
+
+格式化MSD分区：  
+```
+mkfs -t ext4 /dev/mmcblk0p2
+```  
 
 ### 安装Pikvm
-cd到Root用户的主目录下，ls可以看到有两个文件夹。`kvmd-armbian`目录存放PiKVM的安装脚本，`NanoHatOLED`目录存放了OLED的驱动脚本。
+cd到root用户的主目录下，可以看到有两个文件夹。`kvmd-armbian`目录存放PiKVM的安装脚本，`NanoHatOLED`目录存放了OLED的驱动脚本。
+
 ![占用分区](https://github.com/Road-tech/Road-blog-Figure/blob/main/PiKVM_Prebuild_image_NanoPi-Neo/PiKVM_Prebuild_image_NanoPi-Neo-10.png?raw=true)  
 
-```cd kvmd-armbian && ./install.sh```
+执行安装脚本：  
+```
+cd kvmd-armbian && ./install.sh
+```
+
 安装分两部分，Part1安装完成后会自动重启一次，需再次执行以上命令完成Part2安装.  
 
 ### 挂载MSD分区
-编辑文件  
-```vi /etc/fstab```
-在文件最下方新增一行，补充下面内容  
-```/dev/mmcblk0p2  /var/lib/kvmd/msd   ext4  nodev,nosuid,noexec,ro,errors=remount-ro,data=journal,X-kvmd.otgmsd-root=/var/lib/kvmd/msd,X-kvmd.otgmsd-user=kvmd  0  0```
-挂载分区  
-``` mount -a```
+编辑文件：  
+```
+vi /etc/fstab
+```  
+
+在文件最下方新增一行，补充下面内容：  
+```
+/dev/mmcblk0p2  /var/lib/kvmd/msd   ext4  nodev,nosuid,noexec,ro,errors=remount-ro,data=journal,X-kvmd.otgmsd-root=/var/lib/kvmd/msd,X-kvmd.otgmsd-user=kvmd  0  0
+```  
+
+挂载分区：  
+``` 
+mount -a
+```  
 
 ### 开启PiKVM的MSD功能
-编辑文件  
-```/etc/kvmd/override.yaml```
-删除以下内容  
+编辑文件：    
+```
+vi /etc/kvmd/override.yaml
+```  
 
-重启PiKVM或者NanoPi NEO     
-`systemctl restart kvmd` 或 `reboot`  
+删除或注释以下内容：  
+```
+    msd:
+       type:  disabled
+```
+
+重启PiKVM或者NanoPi NEO：      
+
+```
+systemctl restart kvmd 或 reboot
+```  
