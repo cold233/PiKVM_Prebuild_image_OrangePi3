@@ -51,14 +51,14 @@ jobs:
         ./compile.sh build BOARD=orangepi3 BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy BUILD_DESKTOP=no
         echo "::set-output name=status::success"
         cd  output/images
-        tar -Jcvf /tmp/nanopi_neo_image.tar.xz  *.img        
+        tar -Jcvf /tmp/Orangepi_3_image.tar.xz  *.img        
 
     - name: Upload Armbian image
       uses: actions/upload-artifact@master
       if: steps.build.outputs.status == 'success'
       with:
         name: Orangepi_3_image
-        path: /tmp/nanopi_neo_image.tar.xz
+        path: /tmp/Orangepi_3_image.tar.xz
         
     - name: Generate release tag
       id: tag
@@ -74,4 +74,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        files: /tmp/nanopi_neo_image.tar.xz 
+        files: /tmp/Orangepi_3_image.tar.xz 
