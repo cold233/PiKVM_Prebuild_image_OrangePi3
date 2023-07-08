@@ -118,6 +118,10 @@ install-dependencies
 get-packages
 git clone https://github.com/Road-tech/kvmd-armbian.git /root/kvmd-armbian
 git clone https://github.com/Road-tech/NanoHatOLED.git /root/NanoHatOLED
+touch /root/.no_rootfs_resize #Disable rootfs resize on first boot. 
+#This can lead to a too small rootfs and make it impossible to install new packeges 
+#it can also have negative affects to system performance due to lack of space.
+#If you have EMMC on your board or you want to use a usb stick as MSD partition, comment this line.
 cd /root/NanoHatOLED
 apt-get install i2c-tools libi2c-dev minicom git -y
 if [ ! -f BakeBit/install.sh ]; then
