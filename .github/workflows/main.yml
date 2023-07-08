@@ -7,6 +7,8 @@ on:
 env:
   UPLOAD_IMAGE: true
   CUSTOMIZATIOM_SCRIPT: userpatches/customize-image.sh
+  ARMBIAN_CHECK_FIRST_LOGIN: armbian-check-first-login.sh
+  AIMBIAN_FIRSTLOGIN: armbian-firstlogin
   KERNEL_CONFIG: config
   UPLOAD_RELEASE: true
 
@@ -32,10 +34,7 @@ jobs:
       run: |
         pwd
         echo   $GITHUB_WORKSPACE
-        git clone --depth=1 --branch=main https://github.com/armbian/build
-        # curl -L -o armbian.tar.gz $(curl https://api.github.com/repos/armbian/build/releases | awk -F"[tarball_url]" '/tarball_url/{print $x}' | grep $RELEASE_SOURCE_TAG | sed 's/"//g' | sed 's/tarball_url://g' | sed 's/ //g' | sed 's/,//g')
-        # tar -xzf armbian.tar.gz
-        # rm -rf armbian.tar.gz
+        git clone --depth=1 --branch=main https://github.com/Road-tech/armbian-build.git build
      
     - name: Parepre Armbian Env
       run: |
@@ -49,9 +48,9 @@ jobs:
         echo "cp userpatches/customize-image.sh and compile"
         [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
         ./compile.sh build BOARD=orangepi3 BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy BUILD_DESKTOP=no
-        echo "::set-output name=status::success"
         cd  output/images
-        tar -Jcvf /tmp/Orangepi_3_image.tar.xz  *.img        
+        tar -Jcvf /tmp/Orangepi_3_image.tar.xz  *.img   
+        echo "::set-output name=status::success"
 
     - name: Upload Armbian image
       uses: actions/upload-artifact@master
