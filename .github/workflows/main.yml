@@ -39,7 +39,7 @@ jobs:
     - name: Parepre Armbian Env
       run: |
         cd build
-        bash ./compile.sh build BOARD=orangepi3 BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy BUILD_DESKTOP=no
+        bash ./compile.sh build BOARD=rock64 BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy BUILD_DESKTOP=no
    
     - name: Add customize-image.sh
       id: build
@@ -47,17 +47,17 @@ jobs:
         cd build
         echo "cp userpatches/customize-image.sh and compile"
         [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
-        ./compile.sh build BOARD=orangepi3 BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy BUILD_DESKTOP=no
+        ./compile.sh build BOARD=rock64 BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy BUILD_DESKTOP=no
         cd  output/images
-        tar -Jcvf /tmp/Orangepi_3_image.tar.xz  *.img   
+        tar -Jcvf /tmp/rock64_image.tar.xz  *.img   
         echo "::set-output name=status::success"
 
     - name: Upload Armbian image
       uses: actions/upload-artifact@master
       if: steps.build.outputs.status == 'success'
       with:
-        name: Orangepi_3_image
-        path: /tmp/Orangepi_3_image.tar.xz
+        name: rock64_image
+        path: /tmp/rock64_image.tar.xz
         
     - name: Generate release tag
       id: tag
@@ -73,4 +73,4 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        files: /tmp/Orangepi_3_image.tar.xz 
+        files: /tmp/rock64_image.tar.xz 
