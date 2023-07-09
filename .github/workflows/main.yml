@@ -47,7 +47,7 @@ jobs:
         cd build
         echo "cp userpatches/customize-image.sh and compile"
         [ -e $CUSTOMIZATIOM_SCRIPT ] && mv $GITHUB_WORKSPACE/$CUSTOMIZATIOM_SCRIPT userpatches/customize-image.sh
-        ./compile.sh build BOARD=zero BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy BUILD_DESKTOP=no
+        ./compile.sh build BOARD=orangepizero BRANCH=current BUILD_MINIMAL=no KERNEL_CONFIGURE=no RELEASE=jammy BUILD_DESKTOP=no
         cd  output/images
         tar -Jcvf /tmp/Orangepi_zero_image.tar.xz  *.img   
         echo "::set-output name=status::success"
